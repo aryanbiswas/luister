@@ -1,6 +1,3 @@
-/* ═══════════════════════════════════════════════
-   ██████████  DATABASE LAYER (in-memory)
-═══════════════════════════════════════════════ */
 const DB = {
   users: [
     { id: 1, name: 'Demo User', email: 'demo@luister.fm', password: 'demo123', plan: 'pro', joined: '2024-01-15', avatar: 'D' }
@@ -72,74 +69,29 @@ const DB = {
   }
 };
 
-/* ═══════════════════════════════════════════════
-   ██████████  SERVER / API LAYER (simulated)
-═══════════════════════════════════════════════ */
 const API = {
   async request(endpoint, method = 'GET', body = null) {
-    // Simulate network latency
-    await new Promise(r => setTimeout(r, Math.random() * 60 + 20));
-    const token = localStorage.getItem('luister_token');
-    
-    if (endpoint === '/auth/login' && method === 'POST') {
-      const result = DB.authenticate(body.email, body.password);
-      if (!result) return { error: 'Invalid credentials' };
-      localStorage.setItem('luister_token', result.token);
-      return { success: true, user: result.user };
-    }
-    if (endpoint === '/auth/register' && method === 'POST') {
-      const result = DB.createUser(body.name, body.email, body.password);
-      if (result.error) return result;
-      const auth = DB.authenticate(body.email, body.password);
-      localStorage.setItem('luister_token', auth.token);
-      return { success: true, user: auth.user };
-    }
-    if (endpoint === '/auth/me') {
-      const user = DB.getUser(token);
-      return user ? { user } : { error: 'Unauthorized' };
-    }
-    if (endpoint === '/auth/logout' && method === 'POST') {
-      localStorage.removeItem('luister_token');
-      return { success: true };
-    }
-    if (endpoint.startsWith('/tracks/like') && method === 'POST') {
-      const user = DB.getUser(token);
-      if (!user) return { error: 'Login required' };
-      const liked = DB.toggleLike(user.id, body.trackId);
-      return { liked };
-    }
-    if (endpoint.startsWith('/artists/follow') && method === 'POST') {
-      const user = DB.getUser(token);
-      if (!user) return { error: 'Login required' };
-      const following = DB.toggleFollow(user.id, body.artistId);
-      return { following };
-    }
-    if (endpoint === '/player/play' && method === 'POST') {
-      const user = DB.getUser(token);
-      if (user) DB.addHistory(user.id, body.track);
-      return { success: true };
-    }
-    if (endpoint === '/library/liked') {
-      const user = DB.getUser(token);
-      if (!user) return { error: 'Unauthorized' };
-      const ids = DB.likedTracks[user.id] || [];
-      return { tracks: TRACKS.filter(t => ids.includes(t.id)) };
-    }
-    if (endpoint === '/library/history') {
-      const user = DB.getUser(token);
-      if (!user) return { error: 'Unauthorized' };
-      return { history: DB.playHistory[user.id] || [] };
-    }
-    if (endpoint === '/search') {
-      return { results: DB.search(body.query) };
-    }
-    return { error: 'Not found' };
+  const BASE = 'http://localhost:8000';
+  const token = localStorage.getItem('luister_token');
+
+  const res = await fetch(`${BASE}${endpoint}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : null,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `HTTP ${res.status}`);
   }
+
+  return res.json();
+  },
 };
 
-/* ═══════════════════════════════════════════════
-   ██████████  APP DATA
-═══════════════════════════════════════════════ */
 const TRACKS = [
 { id: 1, name: 'Midnight Ambience', artist: 'Aura Collective', genre: 'Ambient', dur: '4:02', durSec: 242, src: 'songs/song1.mp3', wave: [14,8,18,5,12,20,9,16,7,22,11,15], color: '#c9a96e' },  { id: 2, name: 'Golden Hour Drift', artist: 'Luminara', genre: 'Electronic', dur: '3:47', durSec: 227, wave: [10,18,6,22,14,8,19,5,16,12,20,9], color: '#d4a96a' },
   { id: 3, name: 'Glass Cathedral', artist: 'Sable & Mist', genre: 'Neo-Classical', dur: '5:14', durSec: 314, wave: [20,9,15,7,18,12,5,22,10,16,8,14], color: '#b8956a' },
@@ -204,9 +156,6 @@ const EQ_PRESETS = {
   deep:   [85,78,68,58,50,45,42,40,40,40],
 };
 
-/* ═══════════════════════════════════════════════
-   ██████████  AUDIO ENGINE (Web Audio API)
-═══════════════════════════════════════════════ */
 let audioCtx = null;
 let gainNode = null, eqNodes = [], analyserNode = null, oscillatorNode = null, lfoNode = null;
 let isAudioInit = false;
@@ -284,9 +233,6 @@ function applyEQBand(bandIndex, value) {
   eqNodes[bandIndex].gain.value = db;
 }
 
-/* ═══════════════════════════════════════════════
-   ██████════  PLAYER STATE
-═══════════════════════════════════════════════ */
 let currentTrack = 0, isPlaying = false, progress = 0, isShuffle = false, repeatMode = 0;
 
 const audio = new Audio();
@@ -448,9 +394,6 @@ document.getElementById('progTrack').addEventListener('click', e => {
   renderProgress();
 });
 
-/* ═══════════════════════════════════════════════
-   ██████════  ARTWORK CANVAS
-═══════════════════════════════════════════════ */
 const artCanvas = document.getElementById('artworkCanvas');
 const artCtx = artCanvas.getContext('2d');
 let artT = 0, artAnimId;
@@ -511,9 +454,7 @@ function updateArtworkCanvas(track) {
   draw();
 }
 
-/* ═══════════════════════════════════════════════
-   ██████════  AMBIENT CANVAS BG
-═══════════════════════════════════════════════ */
+
 const bg = document.getElementById('bg');
 const bgCtx = bg.getContext('2d');
 let bgW, bgH, bgT = 0, mx = 0, my = 0;
@@ -550,9 +491,7 @@ function drawBg() {
 }
 drawBg();
 
-/* ═══════════════════════════════════════════════
-   ██████════  HERO VISUALIZER
-═══════════════════════════════════════════════ */
+
 function buildHeroVis() {
   const wrap = document.getElementById('heroVis');
   wrap.innerHTML = '';
@@ -572,9 +511,7 @@ function buildHeroVis() {
   }, 80);
 }
 
-/* ═══════════════════════════════════════════════
-   ██████════  CURSOR
-═══════════════════════════════════════════════ */
+
 const dot = document.getElementById('cursor-dot');
 const ring = document.getElementById('cursor-ring');
 document.addEventListener('mousemove', e => {
@@ -589,9 +526,7 @@ document.querySelectorAll('a, button, .track-row, .album-card, .artist-card, .pl
   el.addEventListener('mouseleave', () => ring.classList.remove('cursor-expand'));
 });
 
-/* ═══════════════════════════════════════════════
-   ██████════  AUTH
-═══════════════════════════════════════════════ */
+
 function openAuth(tab) {
   document.getElementById('authModal').classList.add('open');
   switchTab(tab || 'signin');
@@ -660,9 +595,7 @@ async function restoreSession() {
   if (res.user) { currentUser = res.user; onLogin(res.user); }
 }
 
-/* ═══════════════════════════════════════════════
-   ██████════  LIBRARY SIDEBAR
-═══════════════════════════════════════════════ */
+
 let libTab = 'liked';
 
 function openLibrary() {
@@ -705,9 +638,7 @@ async function renderLibTab(tab) {
   }
 }
 
-/* ═══════════════════════════════════════════════
-   ██████════  SEARCH
-═══════════════════════════════════════════════ */
+
 let searchTimer;
 document.getElementById('navSearch').addEventListener('input', e => {
   clearTimeout(searchTimer);
@@ -747,9 +678,6 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.nav-search-wrap')) document.getElementById('searchDropdown').classList.remove('open');
 });
 
-/* ═══════════════════════════════════════════════
-   ██████════  VIBE
-═══════════════════════════════════════════════ */
 function setVibe(btn) {
   document.querySelectorAll('.vibe-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -758,9 +686,7 @@ function setVibe(btn) {
   setTimeout(() => { desc.textContent = VIBES[btn.dataset.vibe]; desc.style.opacity = 1; }, 320);
 }
 
-/* ═══════════════════════════════════════════════
-   ██████════  EQ
-═══════════════════════════════════════════════ */
+
 function buildEQ() {
   const wrap = document.getElementById('eqBars');
   wrap.innerHTML = EQ_FREQS.map((freq, i) => `
@@ -783,9 +709,7 @@ function applyEQPreset(name, btn) {
   showToast(`EQ: ${btn.textContent}`);
 }
 
-/* ═══════════════════════════════════════════════
-   ██████════  RENDER SECTIONS
-═══════════════════════════════════════════════ */
+
 function renderTracks() {
   const el = document.getElementById('trackList');
   el.innerHTML = TRACKS.map((t, i) => `
@@ -887,9 +811,7 @@ async function handleFollow(artistId, btn) {
   showToast(res.following ? 'Artist followed' : 'Unfollowed');
 }
 
-/* ═══════════════════════════════════════════════
-   ██████════  SCROLL & NAV
-═══════════════════════════════════════════════ */
+
 window.addEventListener('scroll', () => {
   document.getElementById('navbar').classList.toggle('scrolled', scrollY > 60);
   document.getElementById('npb').classList.toggle('visible', scrollY > window.innerHeight * 0.5);
@@ -902,9 +824,7 @@ function scrollToPlayer() {
   document.getElementById('playerSection').scrollIntoView({ behavior: 'smooth' });
 }
 
-/* ═══════════════════════════════════════════════
-   ██████════  TOAST
-═══════════════════════════════════════════════ */
+
 function showToast(msg) {
   const c = document.getElementById('toast-container');
   const t = document.createElement('div');
@@ -915,9 +835,7 @@ function showToast(msg) {
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 500); }, 2800);
 }
 
-/* ═══════════════════════════════════════════════
-   ██████════  ANIMATED COUNTERS
-═══════════════════════════════════════════════ */
+
 function animateCounter(el, target, suffix = '') {
   let start = 0; const dur = 1800; const step = (ts) => {
     if (!start) start = ts;
@@ -943,9 +861,7 @@ const statsObs = new IntersectionObserver((entries) => {
 }, { threshold: 0.3 });
 statsObs.observe(document.querySelector('.stats-section'));
 
-/* ═══════════════════════════════════════════════
-   ██████════  INIT SEQUENCE
-═══════════════════════════════════════════════ */
+
 const LOADER_MSGS = ['Initializing database…', 'Loading audio engine…', 'Fetching catalog…', 'Calibrating EQ…', 'Ready to listen…'];
 let msgIdx = 0;
 const loaderInterval = setInterval(() => {
