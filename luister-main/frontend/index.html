@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LUISTER — Hear the Atmosphere</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+<canvas id="bg"></canvas>
+<div id="noise"></div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-brand">LUISTER</div>
+  <div class="loader-bar-track"><div class="loader-bar-fill"></div></div>
+  <div class="loader-status" id="loaderStatus">Initializing database…</div>
+</div>
+
+<!-- AUTH MODAL -->
+<div id="authModal">
+  <div class="auth-card">
+    <button class="auth-close" onclick="closeAuth()">✕</button>
+    <div class="auth-logo">LUISTER</div>
+    <div class="auth-tagline">Hear the atmosphere</div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tabSignin" onclick="switchTab('signin')">Sign In</div>
+      <div class="auth-tab" id="tabSignup" onclick="switchTab('signup')">Create Account</div>
+    </div>
+    <div id="signinForm">
+      <div class="auth-field">
+        <label class="auth-label">Email</label>
+        <input class="auth-input" type="email" id="siEmail" placeholder="your@email.com">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Password</label>
+        <input class="auth-input" type="password" id="siPassword" placeholder="••••••••">
+      </div>
+      <div class="auth-error" id="siError">Invalid credentials. Try demo@luister.fm / demo123</div>
+      <button class="auth-submit" onclick="handleSignIn()">Sign In</button>
+    </div>
+    <div id="signupForm" style="display:none">
+      <div class="auth-field">
+        <label class="auth-label">Display Name</label>
+        <input class="auth-input" type="text" id="suName" placeholder="Your name">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Email</label>
+        <input class="auth-input" type="email" id="suEmail" placeholder="your@email.com">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Password</label>
+        <input class="auth-input" type="password" id="suPassword" placeholder="8+ characters">
+      </div>
+      <div class="auth-error" id="suError"></div>
+      <button class="auth-submit" onclick="handleSignUp()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a class="nav-logo" href="#">LUISTER</a>
+  <ul class="nav-links">
+    <li><a href="#discover">Discover</a></li>
+    <li><a href="#tracks">Tracks</a></li>
+    <li><a href="#albums">Albums</a></li>
+    <li><a href="#artists">Artists</a></li>
+    <li><a href="#pricing">Plans</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="nav-search-wrap">
+      <svg class="nav-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="nav-search" placeholder="Search tracks, artists…" id="navSearch">
+      <div id="searchDropdown"></div>
+    </div>
+    <div id="navGuest">
+      <button class="nav-btn" onclick="openAuth('signin')">Sign In</button>
+      <button class="nav-btn primary" onclick="openAuth('signup')">Join Free</button>
+    </div>
+    <div id="navUser" style="display:none" class="nav-user">
+      <div class="nav-avatar" id="navAvatar">?</div>
+      <span style="font-size:0.78rem;color:var(--text-2);" id="navName"></span>
+      <button class="nav-btn" onclick="openLibrary()">Library</button>
+      <button class="nav-btn" onclick="signOut()" style="border-color:rgba(255,255,255,0.1);color:var(--text-3);">Out</button>
+    </div>
+  </div>
+</nav>
+
+<!-- SITE -->
+<div class="site">
+
+  <!-- HERO -->
+  <section class="hero" id="discover">
+    <div class="hero-eyebrow">Spatial Audio · Curated Atmospheres · Infinite Depth</div>
+    <h1 class="hero-title">Hear the<br><em>Atmosphere</em></h1>
+    <p class="hero-sub">A music platform engineered for those who listen with intent. Immersive sound, zero compromise.</p>
+    <div class="hero-actions">
+      <button class="btn-prim" onclick="openAuth('signup')">Begin Listening</button>
+      <button class="btn-ghost" onclick="scrollToPlayer()">Explore Player</button>
+    </div>
+    <div class="hero-scroll">
+      <span>Scroll</span>
+      <div class="scroll-line"></div>
+    </div>
+    <div class="vis-wrap" id="heroVis"></div>
+  </section>
+
+  <!-- PLAYER -->
+  <div class="player-section" id="playerSection">
+    <div class="player-wrap fade-in">
+      <div class="player-artwork">
+        <canvas class="artwork-canvas" id="artworkCanvas"></canvas>
+        <div class="artwork-meta">
+          <div>
+            <div class="track-name-display" id="trackName">Midnight Ambience</div>
+            <div class="artist-name-display" id="artistName">Aura Collective</div>
+          </div>
+          <button class="like-btn" id="likeBtn" onclick="toggleLike()">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="player-body">
+        <div class="progress-area">
+          <div class="prog-times">
+            <span id="timeNow">0:00</span>
+            <span id="timeTotal">4:02</span>
+          </div>
+          <div class="prog-track" id="progTrack">
+            <div class="prog-fill" id="progFill">
+              <div class="prog-thumb"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls-row">
+          <div class="ctrl-group">
+            <button class="ctrl-btn" id="shuffleBtn" onclick="toggleShuffle()" title="Shuffle">
+              <svg viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+            </button>
+            <button class="ctrl-btn" onclick="prevTrack()" title="Previous">
+              <svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+            </button>
+          </div>
+
+          <button class="play-btn" id="playBtn" onclick="togglePlay()">
+            <svg class="play-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <svg class="pause-icon" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          </button>
+
+          <div class="ctrl-group">
+            <button class="ctrl-btn" onclick="nextTrack()" title="Next">
+              <svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+            </button>
+            <button class="ctrl-btn" id="repeatBtn" onclick="toggleRepeat()" title="Repeat">
+              <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1.25rem;">
+          <div class="vol-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+            <input type="range" class="vol-slider" id="volSlider" min="0" max="100" value="80" oninput="setVolume(this.value)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          </div>
+          <button class="ctrl-btn" onclick="toggleQueue()" title="Queue" style="font-size:0.68rem;letter-spacing:0.1em;color:var(--text-3);width:auto;padding:0 0.75rem;">
+            QUEUE
+          </button>
+        </div>
+      </div>
+
+      <div class="queue-panel" id="queuePanel">
+        <div id="queueList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIBE -->
+  <div class="vibe-section fade-in" id="vibeSection">
+    <span class="section-label">Curate Your Mood</span>
+    <h2 class="section-title">Choose Your<br>Atmosphere</h2>
+    <div class="vibe-grid">
+      <button class="vibe-btn active" data-vibe="calm" onclick="setVibe(this)">Calm</button>
+      <button class="vibe-btn" data-vibe="focus" onclick="setVibe(this)">Focus</button>
+      <button class="vibe-btn" data-vibe="dream" onclick="setVibe(this)">Dream</button>
+      <button class="vibe-btn" data-vibe="night" onclick="setVibe(this)">Night Drive</button>
+      <button class="vibe-btn" data-vibe="deep" onclick="setVibe(this)">Deep</button>
+      <button class="vibe-btn" data-vibe="raw" onclick="setVibe(this)">Raw</button>
+    </div>
+    <div class="vibe-desc" id="vibeDesc">Soft ambient textures and slow harmonic progressions. A sanctuary of stillness and warmth.</div>
+  </div>
+
+  <!-- TRACKS -->
+  <section class="tracks-section fade-in" id="tracks">
+    <div class="tracks-header">
+      <div>
+        <span class="section-label">Now Trending</span>
+        <h2 class="section-title">Featured Tracks</h2>
+      </div>
+      <a href="#">View All →</a>
+    </div>
+    <div class="track-list" id="trackList"></div>
+  </section>
+
+  <!-- ALBUMS -->
+  <section class="albums-section fade-in" id="albums">
+    <span class="section-label">New Releases</span>
+    <h2 class="section-title">Latest Albums</h2>
+    <div class="album-grid" id="albumGrid"></div>
+  </section>
+
+  <!-- ARTISTS -->
+  <section class="artists-section fade-in" id="artists">
+    <span class="section-label">Discover</span>
+    <h2 class="section-title">Featured Artists</h2>
+    <div class="artists-scroll" id="artistsScroll"></div>
+  </section>
+
+  <!-- PLAYLISTS -->
+  <section class="playlists-section fade-in">
+    <span class="section-label">Curated Collections</span>
+    <h2 class="section-title">Mood Playlists</h2>
+    <div class="playlist-grid" id="playlistGrid"></div>
+  </section>
+
+  <!-- EQUALIZER -->
+  <section class="eq-section fade-in">
+    <span class="section-label">Studio Grade</span>
+    <h2 class="section-title">Parametric EQ</h2>
+    <div class="eq-wrap">
+      <div class="eq-title">Sound Profile</div>
+      <div class="eq-bars" id="eqBars"></div>
+      <div class="eq-presets" id="eqPresets">
+        <button class="eq-preset active" onclick="applyEQPreset('flat',this)">Flat</button>
+        <button class="eq-preset" onclick="applyEQPreset('bass',this)">Bass Boost</button>
+        <button class="eq-preset" onclick="applyEQPreset('vocal',this)">Vocal</button>
+        <button class="eq-preset" onclick="applyEQPreset('treble',this)">Treble</button>
+        <button class="eq-preset" onclick="applyEQPreset('lounge',this)">Lounge</button>
+        <button class="eq-preset" onclick="applyEQPreset('deep',this)">Deep</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats-section fade-in">
+    <span class="section-label" style="text-align:center;display:block;">By the Numbers</span>
+    <h2 class="section-title" style="text-align:center;">The Platform</h2>
+    <div class="stats-grid">
+      <div class="stat-block">
+        <div class="stat-num" id="statTracks">0</div>
+        <div class="stat-label">Tracks Available</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num" id="statArtists">0</div>
+        <div class="stat-label">Curated Artists</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num" id="statListeners">0</div>
+        <div class="stat-label">Active Listeners</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-num" id="statPlays">0</div>
+        <div class="stat-label">Monthly Plays</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="pricing-section fade-in" id="pricing">
+    <span class="section-label" style="text-align:center;display:block;">Transparent Pricing</span>
+    <h2 class="section-title" style="text-align:center;">Choose Your<br>Experience</h2>
+    <div class="pricing-grid" id="pricingGrid"></div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="footer-logo">LUISTER</div>
+        <p class="footer-desc">A music platform engineered for those who listen with intent. Immersive sound, curated atmospheres, infinite depth.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Platform</h5>
+        <ul>
+          <li><a href="#">Discover</a></li>
+          <li><a href="#">Charts</a></li>
+          <li><a href="#">Radio</a></li>
+          <li><a href="#">Podcasts</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Company</h5>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Artists</a></li>
+          <li><a href="#">Press</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Legal</h5>
+        <ul>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Terms</a></li>
+          <li><a href="#">Cookies</a></li>
+          <li><a href="#">DMCA</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 LUISTER. All rights reserved.</p>
+      <span>Hear the atmosphere</span>
+    </div>
+  </footer>
+</div>
+
+<!-- NOW PLAYING BAR -->
+<div class="npb" id="npb">
+  <div class="npb-left">
+    <div class="npb-dot"></div>
+    <div>
+      <div class="npb-track" id="npbTrack">Midnight Ambience</div>
+      <div class="npb-artist" id="npbArtist">Aura Collective</div>
+    </div>
+  </div>
+  <div class="npb-center">
+    <div class="npb-bar"><div class="npb-bar-fill" id="npbFill"></div></div>
+  </div>
+  <div class="npb-right">
+    <button class="npb-ctrl" onclick="prevTrack()">
+      <svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+    </button>
+    <button class="npb-ctrl npb-play" id="npbPlayBtn" onclick="togglePlay()">
+      <svg class="play-icon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="var(--gold)"/></svg>
+      <svg class="pause-icon" viewBox="0 0 24 24" style="display:none"><rect x="6" y="4" width="4" height="16" fill="var(--gold)"/><rect x="14" y="4" width="4" height="16" fill="var(--gold)"/></svg>
+    </button>
+    <button class="npb-ctrl" onclick="nextTrack()">
+      <svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- LIBRARY SIDEBAR -->
+<div id="librarySidebar">
+  <div class="lib-header">
+    <div class="lib-title">My Library</div>
+    <button class="lib-close" onclick="closeLibrary()">✕</button>
+  </div>
+  <div class="lib-tabs">
+    <div class="lib-tab active" onclick="switchLibTab('liked')">Liked</div>
+    <div class="lib-tab" onclick="switchLibTab('history')">History</div>
+    <div class="lib-tab" onclick="switchLibTab('playlists')">Playlists</div>
+  </div>
+  <div class="lib-content" id="libContent"></div>
+</div>
+
+  <script src="app.js"></script>
+</body>
+</html>
